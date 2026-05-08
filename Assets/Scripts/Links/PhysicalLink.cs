@@ -1,7 +1,10 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public sealed class PhysicalLink : MonoBehaviour
 {
+    private static readonly List<PhysicalLink> ActiveLinks = new();
+
     [Header("Objects")]
     [SerializeField] private LinkableObject first;
     [SerializeField] private LinkableObject second;
@@ -18,21 +21,77 @@ public sealed class PhysicalLink : MonoBehaviour
     [Header("Visual")]
     [SerializeField] private float lineWidth = 0.06f;
     [SerializeField] private float overloadShake = 0.08f;
+    [SerializeField] private float slackSag = 0.45f;
 
     private Joint2D joint;
     private LineRenderer line;
     private float load01;
     private float overloadTimer;
+    private float currentLength;
+    private bool isSlack;
 
-    public void Initialize(LinkableObject firstObject, LinkableObject secondObject, LinkType type)
+    public static bool TryFindNearest(Vector2 worldPosition, float maxDistance, out PhysicalLink nearestLink)
+    {
+        nearestLink = null;
+        float bestDistance = maxDistance;
+
+        foreach (PhysicalLink link in ActiveLinks)
+        {
+            if (link == null || link.first == null || link.second == null)
+            {
+                continue;
+            }
+
+            float distance = link.GetDistanceToVisualLine(worldPosition);
+
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                nearestLink = link;
+            }
+        }
+
+        return nearestLink != null;
+    }
+
+    public static void DestroyAllLinks()
+    {
+        PhysicalLink[] links = ActiveLinks.ToArray();
+
+        foreach (PhysicalLink link in links)
+        {
+            if (link != null)
+            {
+                link.DestroyLink();
+            }
+        }
+    }
+
+    public void Initialize(LinkableObject firstObject, LinkableObject secondObject, LinkSettings settings)
     {
         first = firstObject;
         second = secondObject;
-        linkType = type;
-        targetLength = Vector2.Distance(first.LinkPosition, second.LinkPosition);
+        linkType = settings.Type;
+        targetLength = Vector2.Distance(first.LinkPosition, second.LinkPosition) * settings.LengthMultiplier;
+        maxForceBeforeBreak = settings.MaxForceBeforeBreak;
 
         CreateJoint();
         CreateLine();
+    }
+
+    public void DestroyLink()
+    {
+        Break();
+    }
+
+    private void OnEnable()
+    {
+        ActiveLinks.Add(this);
+    }
+
+    private void OnDisable()
+    {
+        ActiveLinks.Remove(this);
     }
 
     private void Update()
@@ -69,6 +128,7 @@ public sealed class PhysicalLink : MonoBehaviour
             distanceJoint.connectedBody = second.Body;
             distanceJoint.autoConfigureDistance = false;
             distanceJoint.distance = targetLength;
+            distanceJoint.maxDistanceOnly = true;
             distanceJoint.enableCollision = true;
             joint = distanceJoint;
             return;
@@ -87,7 +147,7 @@ public sealed class PhysicalLink : MonoBehaviour
     private void CreateLine()
     {
         line = gameObject.AddComponent<LineRenderer>();
-        line.positionCount = 2;
+        line.positionCount = 3;
         line.useWorldSpace = true;
         line.startWidth = lineWidth;
         line.endWidth = lineWidth;
@@ -97,7 +157,9 @@ public sealed class PhysicalLink : MonoBehaviour
 
     private void UpdateLoad()
     {
-        float currentLength = Vector2.Distance(first.LinkPosition, second.LinkPosition);
+        currentLength = Vector2.Distance(first.LinkPosition, second.LinkPosition);
+        isSlack = linkType == LinkType.Rigid && currentLength < targetLength * 0.98f;
+
         float stretchLimit = Mathf.Max(targetLength * breakStretchMultiplier, targetLength + 0.01f);
         float stretchLoad = Mathf.InverseLerp(targetLength, stretchLimit, currentLength);
 
@@ -111,6 +173,13 @@ public sealed class PhysicalLink : MonoBehaviour
     {
         Vector3 start = first.LinkPosition;
         Vector3 end = second.LinkPosition;
+        Vector3 middle = (start + end) * 0.5f;
+
+        if (isSlack)
+        {
+            float slack01 = Mathf.Clamp01((targetLength - currentLength) / targetLength);
+            middle += Vector3.down * slackSag * slack01;
+        }
 
         if (load01 > 0.65f)
         {
@@ -119,15 +188,52 @@ public sealed class PhysicalLink : MonoBehaviour
             float shake = overloadShake * Mathf.InverseLerp(0.65f, 1f, load01);
             Vector3 offset = perpendicular * Random.Range(-shake, shake);
             start += offset;
+            middle += offset;
             end -= offset;
         }
 
         line.SetPosition(0, start);
-        line.SetPosition(1, end);
+        line.SetPosition(1, middle);
+        line.SetPosition(2, end);
 
-        Color color = GetLoadColor(load01);
+        Color color = isSlack ? new Color(0.55f, 0.75f, 0.9f, 1f) : GetLoadColor(load01);
         line.startColor = color;
         line.endColor = color;
+    }
+
+    private float GetDistanceToVisualLine(Vector2 point)
+    {
+        if (line == null || line.positionCount < 2)
+        {
+            return float.PositiveInfinity;
+        }
+
+        float bestDistance = float.PositiveInfinity;
+
+        for (int i = 0; i < line.positionCount - 1; i++)
+        {
+            Vector2 start = line.GetPosition(i);
+            Vector2 end = line.GetPosition(i + 1);
+            bestDistance = Mathf.Min(bestDistance, DistanceToSegment(point, start, end));
+        }
+
+        return bestDistance;
+    }
+
+    private static float DistanceToSegment(Vector2 point, Vector2 start, Vector2 end)
+    {
+        Vector2 segment = end - start;
+        float segmentSqrLength = segment.sqrMagnitude;
+
+        if (segmentSqrLength <= Mathf.Epsilon)
+        {
+            return Vector2.Distance(point, start);
+        }
+
+        float t = Vector2.Dot(point - start, segment) / segmentSqrLength;
+        t = Mathf.Clamp01(t);
+        Vector2 closestPoint = start + segment * t;
+        return Vector2.Distance(point, closestPoint);
     }
 
     private static Color GetLoadColor(float load)
