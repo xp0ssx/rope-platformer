@@ -1121,7 +1121,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1.5, y: 0.2, z: 1}
+  m_LocalScale: {x: 1.4, y: 0.2, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 777958247}
@@ -1345,7 +1345,7 @@ Transform:
   m_GameObject: {fileID: 805478452}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.46, y: -0.81, z: 0}
+  m_LocalPosition: {x: 0.35, y: -0.8, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2357,11 +2357,8 @@ MonoBehaviour:
   selectableLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  currentLinkType: 0
-  lengthMultiplier: 1
-  maxForceBeforeBreak: 800
+  currentTool: 0
   lengthStep: 0.1
-  forceStep: 100
   removeLinkHitDistance: 0.35
   showDebugHud: 1
 --- !u!4 &2037872497

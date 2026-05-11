@@ -18,6 +18,8 @@ public sealed class PhysicalLink : MonoBehaviour
     [SerializeField] private float ropeMaxForceBeforeBreak = 900f;
     [SerializeField] private float springMaxForceBeforeBreak = 650f;
     [SerializeField] private float overloadBreakDelay = 0.35f;
+    [SerializeField] private float ropeWinchForce = 45f;
+    [SerializeField] private float ropeWinchMaxForce = 180f;
     [SerializeField] private float springFrequency = 3f;
     [SerializeField] private float springDampingRatio = 0.35f;
 
@@ -87,11 +89,13 @@ public sealed class PhysicalLink : MonoBehaviour
 
         CreateJoint();
         CreateLine();
+        WakeConnectedBodies();
     }
 
     public void AdjustLength(float delta)
     {
         SetTargetLength(targetLength + delta);
+        WakeConnectedBodies();
     }
 
     public void SetSelected(bool selected)
@@ -139,6 +143,16 @@ public sealed class PhysicalLink : MonoBehaviour
         {
             Break();
         }
+    }
+
+    private void FixedUpdate()
+    {
+        if (first == null || second == null || linkType != LinkType.Rope)
+        {
+            return;
+        }
+
+        ApplyRopeWinchForce();
     }
 
     private void CreateJoint()
@@ -242,6 +256,52 @@ public sealed class PhysicalLink : MonoBehaviour
         }
     }
 
+    private void ApplyRopeWinchForce()
+    {
+        Vector2 firstPosition = first.LinkPosition;
+        Vector2 secondPosition = second.LinkPosition;
+        Vector2 delta = secondPosition - firstPosition;
+        float distance = delta.magnitude;
+
+        if (distance <= targetLength || distance <= Mathf.Epsilon)
+        {
+            return;
+        }
+
+        Vector2 direction = delta / distance;
+        float tension = Mathf.Min((distance - targetLength) * ropeWinchForce, ropeWinchMaxForce);
+
+        ApplyForceIfDynamic(first.Body, direction * tension);
+        ApplyForceIfDynamic(second.Body, -direction * tension);
+        WakeConnectedBodies();
+    }
+
+    private static void ApplyForceIfDynamic(Rigidbody2D body, Vector2 force)
+    {
+        if (body == null || body.bodyType != RigidbodyType2D.Dynamic)
+        {
+            return;
+        }
+
+        body.AddForce(force, ForceMode2D.Force);
+    }
+
+    private void WakeConnectedBodies()
+    {
+        WakeIfDynamic(first != null ? first.Body : null);
+        WakeIfDynamic(second != null ? second.Body : null);
+    }
+
+    private static void WakeIfDynamic(Rigidbody2D body)
+    {
+        if (body == null || body.bodyType != RigidbodyType2D.Dynamic)
+        {
+            return;
+        }
+
+        body.WakeUp();
+    }
+
     private void UpdateLineWidth()
     {
         if (line == null)
@@ -301,6 +361,8 @@ public sealed class PhysicalLink : MonoBehaviour
 
     private void Break()
     {
+        WakeConnectedBodies();
+
         if (joint != null)
         {
             Destroy(joint);
