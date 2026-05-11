@@ -1,13 +1,9 @@
 public readonly struct LinkSettings
 {
-    public LinkSettings(LinkType type, float lengthMultiplier, float maxForceBeforeBreak)
+    public LinkSettings(LinkType type)
     {
         Type = type;
-        LengthMultiplier = lengthMultiplier;
-        MaxForceBeforeBreak = maxForceBeforeBreak;
     }
 
     public LinkType Type { get; }
-    public float LengthMultiplier { get; }
-    public float MaxForceBeforeBreak { get; }
 }

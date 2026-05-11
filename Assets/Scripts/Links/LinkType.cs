@@ -1,5 +1,5 @@
 public enum LinkType
 {
-    Rigid,
-    Elastic
+    Rope,
+    Spring
 }

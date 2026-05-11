@@ -12,8 +12,11 @@ public sealed class PhysicalLink : MonoBehaviour
 
     [Header("Physics")]
     [SerializeField] private float targetLength = 2f;
+    [SerializeField] private float minTargetLength = 0.45f;
+    [SerializeField] private float maxTargetLength = 12f;
     [SerializeField] private float breakStretchMultiplier = 1.8f;
-    [SerializeField] private float maxForceBeforeBreak = 800f;
+    [SerializeField] private float ropeMaxForceBeforeBreak = 900f;
+    [SerializeField] private float springMaxForceBeforeBreak = 650f;
     [SerializeField] private float overloadBreakDelay = 0.35f;
     [SerializeField] private float springFrequency = 3f;
     [SerializeField] private float springDampingRatio = 0.35f;
@@ -29,6 +32,13 @@ public sealed class PhysicalLink : MonoBehaviour
     private float overloadTimer;
     private float currentLength;
     private bool isSlack;
+    private bool isSelected;
+    private float maxForceBeforeBreak;
+
+    public LinkType Type => linkType;
+    public float TargetLength => targetLength;
+    public float CurrentLength => currentLength;
+    public float Load01 => load01;
 
     public static bool TryFindNearest(Vector2 worldPosition, float maxDistance, out PhysicalLink nearestLink)
     {
@@ -72,11 +82,22 @@ public sealed class PhysicalLink : MonoBehaviour
         first = firstObject;
         second = secondObject;
         linkType = settings.Type;
-        targetLength = Vector2.Distance(first.LinkPosition, second.LinkPosition) * settings.LengthMultiplier;
-        maxForceBeforeBreak = settings.MaxForceBeforeBreak;
+        maxForceBeforeBreak = linkType == LinkType.Rope ? ropeMaxForceBeforeBreak : springMaxForceBeforeBreak;
+        SetTargetLength(Vector2.Distance(first.LinkPosition, second.LinkPosition));
 
         CreateJoint();
         CreateLine();
+    }
+
+    public void AdjustLength(float delta)
+    {
+        SetTargetLength(targetLength + delta);
+    }
+
+    public void SetSelected(bool selected)
+    {
+        isSelected = selected;
+        UpdateLineWidth();
     }
 
     public void DestroyLink()
@@ -122,7 +143,7 @@ public sealed class PhysicalLink : MonoBehaviour
 
     private void CreateJoint()
     {
-        if (linkType == LinkType.Rigid)
+        if (linkType == LinkType.Rope)
         {
             DistanceJoint2D distanceJoint = first.gameObject.AddComponent<DistanceJoint2D>();
             distanceJoint.connectedBody = second.Body;
@@ -153,15 +174,20 @@ public sealed class PhysicalLink : MonoBehaviour
         line.endWidth = lineWidth;
         line.material = new Material(Shader.Find("Sprites/Default"));
         line.numCapVertices = 4;
+        UpdateLineWidth();
     }
 
     private void UpdateLoad()
     {
         currentLength = Vector2.Distance(first.LinkPosition, second.LinkPosition);
-        isSlack = linkType == LinkType.Rigid && currentLength < targetLength * 0.98f;
+        isSlack = linkType == LinkType.Rope && currentLength < targetLength * 0.98f;
 
-        float stretchLimit = Mathf.Max(targetLength * breakStretchMultiplier, targetLength + 0.01f);
-        float stretchLoad = Mathf.InverseLerp(targetLength, stretchLimit, currentLength);
+        float lengthDelta = linkType == LinkType.Rope
+            ? Mathf.Max(0f, currentLength - targetLength)
+            : Mathf.Abs(currentLength - targetLength);
+
+        float breakLengthDelta = Mathf.Max(targetLength * (breakStretchMultiplier - 1f), 0.01f);
+        float stretchLoad = Mathf.InverseLerp(0f, breakLengthDelta, lengthDelta);
 
         float reactionForce = joint.GetReactionForce(Time.fixedDeltaTime).magnitude;
         float forceLoad = Mathf.InverseLerp(0f, maxForceBeforeBreak, reactionForce);
@@ -199,6 +225,33 @@ public sealed class PhysicalLink : MonoBehaviour
         Color color = isSlack ? new Color(0.55f, 0.75f, 0.9f, 1f) : GetLoadColor(load01);
         line.startColor = color;
         line.endColor = color;
+        UpdateLineWidth();
+    }
+
+    private void SetTargetLength(float length)
+    {
+        targetLength = Mathf.Clamp(length, minTargetLength, maxTargetLength);
+
+        if (joint is DistanceJoint2D distanceJoint)
+        {
+            distanceJoint.distance = targetLength;
+        }
+        else if (joint is SpringJoint2D springJoint)
+        {
+            springJoint.distance = targetLength;
+        }
+    }
+
+    private void UpdateLineWidth()
+    {
+        if (line == null)
+        {
+            return;
+        }
+
+        float width = isSelected ? lineWidth * 1.8f : lineWidth;
+        line.startWidth = width;
+        line.endWidth = width;
     }
 
     private float GetDistanceToVisualLine(Vector2 point)
