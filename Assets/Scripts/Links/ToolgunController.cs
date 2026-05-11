@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -11,7 +12,7 @@ public sealed class ToolgunController : MonoBehaviour
     [SerializeField] private bool showDebugHud = true;
 
     private LinkableObject selectedObject;
-    private PhysicalLink selectedLink;
+    private readonly List<PhysicalLink> selectedLinks = new();
 
     private void Awake()
     {
@@ -23,6 +24,7 @@ public sealed class ToolgunController : MonoBehaviour
 
     private void Update()
     {
+        RemoveMissingSelectedLinks();
         ReadModeSwitch();
         ReadSelectedLinkEditing();
         ReadLinkRemoval();
@@ -39,16 +41,24 @@ public sealed class ToolgunController : MonoBehaviour
             if (keyboard.cKey.wasPressedThisFrame)
             {
                 PhysicalLink.DestroyAllLinks();
-                SetSelectedLink(null);
+                ClearSelectedLinks();
                 SetSelectedObject(null);
                 return;
             }
 
-            if ((keyboard.deleteKey.wasPressedThisFrame || keyboard.backspaceKey.wasPressedThisFrame) && selectedLink != null)
+            if ((keyboard.deleteKey.wasPressedThisFrame || keyboard.backspaceKey.wasPressedThisFrame) && selectedLinks.Count > 0)
             {
-                PhysicalLink linkToRemove = selectedLink;
-                SetSelectedLink(null);
-                linkToRemove.DestroyLink();
+                PhysicalLink[] linksToRemove = selectedLinks.ToArray();
+                ClearSelectedLinks();
+
+                foreach (PhysicalLink linkToRemove in linksToRemove)
+                {
+                    if (linkToRemove != null)
+                    {
+                        linkToRemove.DestroyLink();
+                    }
+                }
+
                 return;
             }
         }
@@ -61,10 +71,10 @@ public sealed class ToolgunController : MonoBehaviour
         }
 
         if (TryGetMouseWorldPosition(out Vector3 worldPosition) &&
-            PhysicalLink.TryFindNearest(worldPosition, removeLinkHitDistance, out PhysicalLink link))
+            PhysicalLink.TryFindNearest(worldPosition, removeLinkHitDistance, out PhysicalLink nearestLink))
         {
-            SetSelectedLink(null);
-            link.DestroyLink();
+            RemoveSelectedLink(nearestLink);
+            nearestLink.DestroyLink();
             SetSelectedObject(null);
         }
     }
@@ -91,7 +101,7 @@ public sealed class ToolgunController : MonoBehaviour
 
     private void ReadSelectedLinkEditing()
     {
-        if (selectedLink == null)
+        if (selectedLinks.Count == 0)
         {
             return;
         }
@@ -102,12 +112,12 @@ public sealed class ToolgunController : MonoBehaviour
         {
             if (keyboard.qKey.wasPressedThisFrame)
             {
-                selectedLink.AdjustLength(-lengthStep);
+                AdjustSelectedLinks(-lengthStep);
             }
 
             if (keyboard.eKey.wasPressedThisFrame)
             {
-                selectedLink.AdjustLength(lengthStep);
+                AdjustSelectedLinks(lengthStep);
             }
         }
 
@@ -119,11 +129,11 @@ public sealed class ToolgunController : MonoBehaviour
 
             if (scrollY > 0.01f)
             {
-                selectedLink.AdjustLength(-lengthStep);
+                AdjustSelectedLinks(-lengthStep);
             }
             else if (scrollY < -0.01f)
             {
-                selectedLink.AdjustLength(lengthStep);
+                AdjustSelectedLinks(lengthStep);
             }
         }
     }
@@ -139,7 +149,7 @@ public sealed class ToolgunController : MonoBehaviour
         if (keyboardCancel || mouseCancel)
         {
             SetSelectedObject(null);
-            SetSelectedLink(null);
+            ClearSelectedLinks();
         }
     }
 
@@ -180,7 +190,7 @@ public sealed class ToolgunController : MonoBehaviour
     {
         if (selectedObject == null)
         {
-            SetSelectedLink(null);
+            ClearSelectedLinks();
             SetSelectedObject(linkable);
             return;
         }
@@ -201,20 +211,43 @@ public sealed class ToolgunController : MonoBehaviour
         PhysicalLink link = linkObject.AddComponent<PhysicalLink>();
         LinkSettings settings = new(currentTool);
         link.Initialize(first, second, settings);
-        SetSelectedLink(link);
+        SetSingleSelectedLink(link);
     }
 
     private void TrySelectLink(Vector3 worldPosition)
     {
         SetSelectedObject(null);
+        bool additiveSelection = IsAdditiveSelectionPressed();
 
         if (PhysicalLink.TryFindNearest(worldPosition, removeLinkHitDistance, out PhysicalLink link))
         {
-            SetSelectedLink(link);
+            if (additiveSelection)
+            {
+                ToggleSelectedLink(link);
+            }
+            else
+            {
+                SetSingleSelectedLink(link);
+            }
+
             return;
         }
 
-        SetSelectedLink(null);
+        if (!additiveSelection)
+        {
+            ClearSelectedLinks();
+        }
+    }
+
+    private void AdjustSelectedLinks(float delta)
+    {
+        foreach (PhysicalLink link in selectedLinks)
+        {
+            if (link != null)
+            {
+                link.AdjustLength(delta);
+            }
+        }
     }
 
     private bool TryGetMouseWorldPosition(out Vector3 worldPosition)
@@ -249,19 +282,76 @@ public sealed class ToolgunController : MonoBehaviour
         }
     }
 
-    private void SetSelectedLink(PhysicalLink link)
+    private void SetSingleSelectedLink(PhysicalLink link)
     {
-        if (selectedLink != null)
+        ClearSelectedLinks();
+        AddSelectedLink(link);
+    }
+
+    private void ToggleSelectedLink(PhysicalLink link)
+    {
+        if (selectedLinks.Contains(link))
         {
-            selectedLink.SetSelected(false);
+            RemoveSelectedLink(link);
+            return;
         }
 
-        selectedLink = link;
+        AddSelectedLink(link);
+    }
 
-        if (selectedLink != null)
+    private void AddSelectedLink(PhysicalLink link)
+    {
+        if (link == null || selectedLinks.Contains(link))
         {
-            selectedLink.SetSelected(true);
+            return;
         }
+
+        selectedLinks.Add(link);
+        link.SetSelected(true);
+    }
+
+    private void RemoveSelectedLink(PhysicalLink link)
+    {
+        if (link == null)
+        {
+            return;
+        }
+
+        if (selectedLinks.Remove(link))
+        {
+            link.SetSelected(false);
+        }
+    }
+
+    private void ClearSelectedLinks()
+    {
+        foreach (PhysicalLink link in selectedLinks)
+        {
+            if (link != null)
+            {
+                link.SetSelected(false);
+            }
+        }
+
+        selectedLinks.Clear();
+    }
+
+    private void RemoveMissingSelectedLinks()
+    {
+        for (int i = selectedLinks.Count - 1; i >= 0; i--)
+        {
+            if (selectedLinks[i] == null)
+            {
+                selectedLinks.RemoveAt(i);
+            }
+        }
+    }
+
+    private static bool IsAdditiveSelectionPressed()
+    {
+        Keyboard keyboard = Keyboard.current;
+
+        return keyboard != null && (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed);
     }
 
     private void OnGUI()
@@ -271,29 +361,45 @@ public sealed class ToolgunController : MonoBehaviour
             return;
         }
 
-        const int width = 330;
-        const int height = 168;
+        const int width = 360;
+        const int height = 230;
 
         GUILayout.BeginArea(new Rect(12, 12, width, height), GUI.skin.box);
         GUILayout.Label($"Tool: {currentTool}");
         GUILayout.Label($"Object: {(selectedObject == null ? "none" : selectedObject.name)}");
         GUILayout.Label($"Link: {GetSelectedLinkLabel()}");
-        GUILayout.Label("Left click: select object/link");
-        GUILayout.Label("Right click or Esc: cancel");
+        GUILayout.Label("Click: select object/link");
+        GUILayout.Label("Shift + click: add/remove link");
+        GUILayout.Label("Right click / Esc: cancel");
         GUILayout.Label("1: Rope  2: Spring");
-        GUILayout.Label("Q / wheel up: shorten selected link");
-        GUILayout.Label("E / wheel down: lengthen selected link");
-        GUILayout.Label("Middle: remove link  Del: selected  C: clear");
+        GUILayout.Label("Q / wheel up: shorten selected");
+        GUILayout.Label("E / wheel down: lengthen selected");
+        GUILayout.Label("Middle: remove hovered link");
+        GUILayout.Label("Del: remove selected   C: clear all");
         GUILayout.EndArea();
     }
 
     private string GetSelectedLinkLabel()
     {
-        if (selectedLink == null)
+        if (selectedLinks.Count == 0)
         {
             return "none";
         }
 
-        return $"{selectedLink.Type}, length {selectedLink.TargetLength:0.0}, load {selectedLink.Load01 * 100f:0}%";
+        if (selectedLinks.Count == 1)
+        {
+            PhysicalLink link = selectedLinks[0];
+            return $"{link.Type}, length {link.TargetLength:0.0}, load {link.Load01 * 100f:0}%";
+        }
+
+        float totalLoad = 0f;
+
+        foreach (PhysicalLink link in selectedLinks)
+        {
+            totalLoad += link.Load01;
+        }
+
+        float averageLoad = totalLoad / selectedLinks.Count;
+        return $"{selectedLinks.Count} links, avg load {averageLoad * 100f:0}%";
     }
 }
