@@ -79,6 +79,29 @@ public sealed class PhysicalLink : MonoBehaviour
         }
     }
 
+    public static bool HasSpringLink(LinkableObject linkableObject)
+    {
+        if (linkableObject == null)
+        {
+            return false;
+        }
+
+        foreach (PhysicalLink link in ActiveLinks)
+        {
+            if (link == null || link.linkType != LinkType.Spring)
+            {
+                continue;
+            }
+
+            if (link.first == linkableObject || link.second == linkableObject)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public void Initialize(LinkableObject firstObject, LinkableObject secondObject, LinkSettings settings)
     {
         first = firstObject;
@@ -221,11 +244,13 @@ public sealed class PhysicalLink : MonoBehaviour
             middle += Vector3.down * slackSag * slack01;
         }
 
-        if (load01 > 0.65f)
+        float danger01 = Mathf.InverseLerp(0.65f, 1f, load01);
+
+        if (danger01 > 0f)
         {
             Vector3 direction = (end - start).normalized;
             Vector3 perpendicular = new(-direction.y, direction.x, 0f);
-            float shake = overloadShake * Mathf.InverseLerp(0.65f, 1f, load01);
+            float shake = overloadShake * danger01 * danger01;
             Vector3 offset = perpendicular * Random.Range(-shake, shake);
             start += offset;
             middle += offset;
@@ -237,6 +262,13 @@ public sealed class PhysicalLink : MonoBehaviour
         line.SetPosition(2, end);
 
         Color color = isSlack ? new Color(0.55f, 0.75f, 0.9f, 1f) : GetLoadColor(load01);
+
+        if (load01 > 0.82f)
+        {
+            float blink = Mathf.PingPong(Time.time * 12f, 1f);
+            color = Color.Lerp(color, Color.white, blink * 0.55f);
+        }
+
         line.startColor = color;
         line.endColor = color;
         UpdateLineWidth();
@@ -310,6 +342,12 @@ public sealed class PhysicalLink : MonoBehaviour
         }
 
         float width = isSelected ? lineWidth * 1.8f : lineWidth;
+
+        if (load01 > 0.75f)
+        {
+            width *= Mathf.Lerp(1f, 2.2f, Mathf.InverseLerp(0.75f, 1f, load01));
+        }
+
         line.startWidth = width;
         line.endWidth = width;
     }

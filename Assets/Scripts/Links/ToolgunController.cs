@@ -9,7 +9,7 @@ public sealed class ToolgunController : MonoBehaviour
     [SerializeField] private LinkType currentTool = LinkType.Rope;
     [SerializeField] private float lengthStep = 0.25f;
     [SerializeField] private float removeLinkHitDistance = 0.35f;
-    [SerializeField] private bool showDebugHud = true;
+    [SerializeField] private bool showHud = true;
 
     private LinkableObject selectedObject;
     private readonly List<PhysicalLink> selectedLinks = new();
@@ -356,50 +356,38 @@ public sealed class ToolgunController : MonoBehaviour
 
     private void OnGUI()
     {
-        if (!showDebugHud)
+        if (!showHud)
         {
             return;
         }
 
-        const int width = 360;
-        const int height = 230;
+        const int width = 190;
+        const int height = 64;
 
         GUILayout.BeginArea(new Rect(12, 12, width, height), GUI.skin.box);
         GUILayout.Label($"Tool: {currentTool}");
-        GUILayout.Label($"Object: {(selectedObject == null ? "none" : selectedObject.name)}");
-        GUILayout.Label($"Link: {GetSelectedLinkLabel()}");
-        GUILayout.Label("Click: select object/link");
-        GUILayout.Label("Shift + click: add/remove link");
-        GUILayout.Label("Right click / Esc: cancel");
-        GUILayout.Label("1: Rope  2: Spring");
-        GUILayout.Label("Q / wheel up: shorten selected");
-        GUILayout.Label("E / wheel down: lengthen selected");
-        GUILayout.Label("Middle: remove hovered link");
-        GUILayout.Label("Del: remove selected   C: clear all");
+        GUILayout.Label(GetCompactSelectionLabel());
         GUILayout.EndArea();
     }
 
-    private string GetSelectedLinkLabel()
+    private string GetCompactSelectionLabel()
     {
-        if (selectedLinks.Count == 0)
+        if (selectedLinks.Count > 1)
         {
-            return "none";
+            return $"Links: {selectedLinks.Count}";
         }
 
         if (selectedLinks.Count == 1)
         {
             PhysicalLink link = selectedLinks[0];
-            return $"{link.Type}, length {link.TargetLength:0.0}, load {link.Load01 * 100f:0}%";
+            return $"{link.Type} load {link.Load01 * 100f:0}%";
         }
 
-        float totalLoad = 0f;
-
-        foreach (PhysicalLink link in selectedLinks)
+        if (selectedObject != null)
         {
-            totalLoad += link.Load01;
+            return $"Object: {selectedObject.name}";
         }
 
-        float averageLoad = totalLoad / selectedLinks.Count;
-        return $"{selectedLinks.Count} links, avg load {averageLoad * 100f:0}%";
+        return "1 Rope  2 Spring";
     }
 }

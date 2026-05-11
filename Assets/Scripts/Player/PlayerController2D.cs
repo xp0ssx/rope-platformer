@@ -18,6 +18,7 @@ public sealed class PlayerController2D : MonoBehaviour
     [SerializeField] private Transform visualRoot;
 
     private Rigidbody2D body;
+    private PhysicsMaterial2D frictionlessMaterial;
     private float moveInput;
     private bool jumpRequested;
     private bool facingRight = true;
@@ -25,6 +26,7 @@ public sealed class PlayerController2D : MonoBehaviour
     private void Awake()
     {
         body = GetComponent<Rigidbody2D>();
+        ApplyFrictionlessColliderMaterial();
     }
 
     private void Update()
@@ -120,6 +122,22 @@ public sealed class PlayerController2D : MonoBehaviour
         Vector3 scale = visualRoot.localScale;
         scale.x = Mathf.Abs(scale.x) * (facingRight ? 1f : -1f);
         visualRoot.localScale = scale;
+    }
+
+    private void ApplyFrictionlessColliderMaterial()
+    {
+        frictionlessMaterial = new PhysicsMaterial2D("PlayerFrictionless")
+        {
+            friction = 0f,
+            bounciness = 0f
+        };
+
+        Collider2D[] colliders = GetComponents<Collider2D>();
+
+        foreach (Collider2D playerCollider in colliders)
+        {
+            playerCollider.sharedMaterial = frictionlessMaterial;
+        }
     }
 
     private void OnDrawGizmosSelected()

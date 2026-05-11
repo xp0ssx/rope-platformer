@@ -4,6 +4,8 @@ using UnityEngine;
 public sealed class FinishZone : MonoBehaviour
 {
     [SerializeField] private string playerObjectName = "Player";
+    [SerializeField] private MonoBehaviour[] disableOnComplete;
+    [SerializeField] private Rigidbody2D playerBody;
 
     private bool isCompleted;
 
@@ -18,8 +20,33 @@ public sealed class FinishZone : MonoBehaviour
 
         if (attachedBody != null && attachedBody.gameObject.name == playerObjectName)
         {
-            isCompleted = true;
+            CompleteLevel(attachedBody);
         }
+    }
+
+    private void CompleteLevel(Rigidbody2D attachedBody)
+    {
+        if (isCompleted)
+        {
+            return;
+        }
+
+        isCompleted = true;
+
+        if (playerBody == null)
+        {
+            playerBody = attachedBody;
+        }
+
+        foreach (MonoBehaviour behaviour in disableOnComplete)
+        {
+            if (behaviour != null)
+            {
+                behaviour.enabled = false;
+            }
+        }
+
+        playerBody.linearVelocity = Vector2.zero;
     }
 
     private void OnGUI()
@@ -29,12 +56,13 @@ public sealed class FinishZone : MonoBehaviour
             return;
         }
 
-        const int width = 300;
-        const int height = 70;
+        const int width = 360;
+        const int height = 120;
 
-        Rect rect = new((Screen.width - width) * 0.5f, 24f, width, height);
+        Rect rect = new((Screen.width - width) * 0.5f, 32f, width, height);
         GUILayout.BeginArea(rect, GUI.skin.box);
-        GUILayout.Label("Level complete");
+        GUILayout.Label("Tutorial complete");
+        GUILayout.Label("You used rope, load sharing, and spring tools.");
         GUILayout.Label("Press R to restart");
         GUILayout.EndArea();
     }
