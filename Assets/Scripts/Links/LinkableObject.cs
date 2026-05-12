@@ -1,10 +1,10 @@
 using UnityEngine;
 
 [DisallowMultipleComponent]
-[RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(Collider2D))]
 public sealed class LinkableObject : MonoBehaviour
 {
+    [SerializeField] private Rigidbody2D bodyOverride;
     [SerializeField] private Transform linkAnchor;
     [SerializeField] private Renderer[] selectionRenderers;
     [SerializeField] private Color selectedColor = new(0.15f, 0.85f, 1f, 1f);
@@ -19,7 +19,13 @@ public sealed class LinkableObject : MonoBehaviour
 
     private void Awake()
     {
-        Body = GetComponent<Rigidbody2D>();
+        Body = bodyOverride != null ? bodyOverride : GetComponent<Rigidbody2D>();
+
+        if (Body == null)
+        {
+            Body = GetComponentInParent<Rigidbody2D>();
+        }
+
         CacheRenderersIfNeeded();
     }
 

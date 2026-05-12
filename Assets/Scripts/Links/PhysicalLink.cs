@@ -102,11 +102,48 @@ public sealed class PhysicalLink : MonoBehaviour
         return false;
     }
 
+    public static int CountConnectedLinks(IReadOnlyList<LinkableObject> linkableObjects, LinkType? requiredType = null)
+    {
+        if (linkableObjects == null)
+        {
+            return 0;
+        }
+
+        int count = 0;
+
+        foreach (PhysicalLink link in ActiveLinks)
+        {
+            if (link == null)
+            {
+                continue;
+            }
+
+            if (requiredType.HasValue && link.linkType != requiredType.Value)
+            {
+                continue;
+            }
+
+            if (link.IsConnectedToAny(linkableObjects))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
     public void Initialize(LinkableObject firstObject, LinkableObject secondObject, LinkSettings settings)
     {
         first = firstObject;
         second = secondObject;
         linkType = settings.Type;
+
+        if (!CanCreateJoint())
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         maxForceBeforeBreak = linkType == LinkType.Rope ? ropeMaxForceBeforeBreak : springMaxForceBeforeBreak;
         SetTargetLength(Vector2.Distance(first.LinkPosition, second.LinkPosition));
 
@@ -182,9 +219,12 @@ public sealed class PhysicalLink : MonoBehaviour
     {
         if (linkType == LinkType.Rope)
         {
-            DistanceJoint2D distanceJoint = first.gameObject.AddComponent<DistanceJoint2D>();
+            DistanceJoint2D distanceJoint = first.Body.gameObject.AddComponent<DistanceJoint2D>();
             distanceJoint.connectedBody = second.Body;
             distanceJoint.autoConfigureDistance = false;
+            distanceJoint.autoConfigureConnectedAnchor = false;
+            distanceJoint.anchor = first.Body.transform.InverseTransformPoint(first.LinkPosition);
+            distanceJoint.connectedAnchor = second.Body.transform.InverseTransformPoint(second.LinkPosition);
             distanceJoint.distance = targetLength;
             distanceJoint.maxDistanceOnly = true;
             distanceJoint.enableCollision = true;
@@ -192,9 +232,12 @@ public sealed class PhysicalLink : MonoBehaviour
             return;
         }
 
-        SpringJoint2D springJoint = first.gameObject.AddComponent<SpringJoint2D>();
+        SpringJoint2D springJoint = first.Body.gameObject.AddComponent<SpringJoint2D>();
         springJoint.connectedBody = second.Body;
         springJoint.autoConfigureDistance = false;
+        springJoint.autoConfigureConnectedAnchor = false;
+        springJoint.anchor = first.Body.transform.InverseTransformPoint(first.LinkPosition);
+        springJoint.connectedAnchor = second.Body.transform.InverseTransformPoint(second.LinkPosition);
         springJoint.distance = targetLength;
         springJoint.frequency = springFrequency;
         springJoint.dampingRatio = springDampingRatio;
@@ -350,6 +393,31 @@ public sealed class PhysicalLink : MonoBehaviour
 
         line.startWidth = width;
         line.endWidth = width;
+    }
+
+    private bool CanCreateJoint()
+    {
+        if (first == null || second == null || first.Body == null || second.Body == null)
+        {
+            return false;
+        }
+
+        return first.Body != second.Body;
+    }
+
+    private bool IsConnectedToAny(IReadOnlyList<LinkableObject> linkableObjects)
+    {
+        for (int i = 0; i < linkableObjects.Count; i++)
+        {
+            LinkableObject linkableObject = linkableObjects[i];
+
+            if (linkableObject != null && (first == linkableObject || second == linkableObject))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private float GetDistanceToVisualLine(Vector2 point)

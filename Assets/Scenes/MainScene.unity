@@ -776,9 +776,19 @@ MonoBehaviour:
   target: {fileID: 2075291695}
   offset: {x: 0, y: 2, z: -12}
   smoothTime: 0.15
+  verticalDeadZone: 1.3
+  enableLookUp: 1
+  lookUpOffset: 2.8
+  lookUpSmoothTime: 0.12
+  enableMouseLook: 1
+  maxMouseLookOffset: {x: 5.5, y: 2.2}
+  mouseLookDeadZone: 0.55
+  mouseLookFullOffsetAt: 0.95
+  mouseLookPower: 1.4
+  mouseLookSmoothTime: 0.12
   useBounds: 1
-  minPosition: {x: -3, y: 0.5}
-  maxPosition: {x: 24, y: 1.5}
+  worldMin: {x: -10, y: -7}
+  worldMax: {x: 36, y: 8}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -937,6 +947,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b5c8696455ea3b72892289d87c71ea4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LinkableObject
+  bodyOverride: {fileID: 0}
   linkAnchor: {fileID: 0}
   selectionRenderers: []
   selectedColor: {r: 0.15, g: 0.85, b: 1, a: 1}
@@ -2607,6 +2618,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b5c8696455ea3b72892289d87c71ea4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LinkableObject
+  bodyOverride: {fileID: 0}
   linkAnchor: {fileID: 0}
   selectionRenderers: []
   selectedColor: {r: 0.15, g: 0.85, b: 1, a: 1}
@@ -2957,6 +2969,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b5c8696455ea3b72892289d87c71ea4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LinkableObject
+  bodyOverride: {fileID: 0}
   linkAnchor: {fileID: 0}
   selectionRenderers: []
   selectedColor: {r: 0.15, g: 0.85, b: 1, a: 1}
@@ -3086,6 +3099,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b5c8696455ea3b72892289d87c71ea4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LinkableObject
+  bodyOverride: {fileID: 0}
   linkAnchor: {fileID: 0}
   selectionRenderers: []
   selectedColor: {r: 0.15, g: 0.85, b: 1, a: 1}
@@ -3384,6 +3398,10 @@ MonoBehaviour:
   - {fileID: 2075291696}
   - {fileID: 2037872496}
   playerBody: {fileID: 2075291694}
+  nextSceneName: Level2Scene
+  loadDelay: 1.2
+  completionTitle: Level complete
+  completionMessage: Loading next scene...
 --- !u!61 &1356783614
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -4418,6 +4436,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b5c8696455ea3b72892289d87c71ea4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LinkableObject
+  bodyOverride: {fileID: 0}
   linkAnchor: {fileID: 0}
   selectionRenderers: []
   selectedColor: {r: 0.15, g: 0.85, b: 1, a: 1}
@@ -4562,6 +4581,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b5c8696455ea3b72892289d87c71ea4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LinkableObject
+  bodyOverride: {fileID: 0}
   linkAnchor: {fileID: 0}
   selectionRenderers: []
   selectedColor: {r: 0.15, g: 0.85, b: 1, a: 1}
@@ -4766,6 +4786,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b5c8696455ea3b72892289d87c71ea4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LinkableObject
+  bodyOverride: {fileID: 0}
   linkAnchor: {fileID: 0}
   selectionRenderers: []
   selectedColor: {r: 0.15, g: 0.85, b: 1, a: 1}
@@ -4872,8 +4893,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpringBoard
   bounceImpulse: 11
   minimumUpVelocity: 8
+  launchDirection: {x: 0, y: 1}
   cooldown: 0.2
-  playerObjectName: Player
+  launchOnStay: 1
+  targetObjectName: Player
 --- !u!1 &1968358817
 GameObject:
   m_ObjectHideFlags: 0
@@ -4994,6 +5017,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b5c8696455ea3b72892289d87c71ea4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LinkableObject
+  bodyOverride: {fileID: 0}
   linkAnchor: {fileID: 0}
   selectionRenderers: []
   selectedColor: {r: 0.15, g: 0.85, b: 1, a: 1}
@@ -5376,6 +5400,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b5c8696455ea3b72892289d87c71ea4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LinkableObject
+  bodyOverride: {fileID: 0}
   linkAnchor: {fileID: 0}
   selectionRenderers: []
   selectedColor: {r: 0.15, g: 0.85, b: 1, a: 1}

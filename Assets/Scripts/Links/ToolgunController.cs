@@ -207,6 +207,11 @@ public sealed class ToolgunController : MonoBehaviour
 
     private void CreateLink(LinkableObject first, LinkableObject second)
     {
+        if (first.Body == null || second.Body == null || first.Body == second.Body)
+        {
+            return;
+        }
+
         GameObject linkObject = new($"Link_{first.name}_{second.name}");
         PhysicalLink link = linkObject.AddComponent<PhysicalLink>();
         LinkSettings settings = new(currentTool);

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(Collider2D))]
 public sealed class FinishZone : MonoBehaviour
@@ -6,6 +7,10 @@ public sealed class FinishZone : MonoBehaviour
     [SerializeField] private string playerObjectName = "Player";
     [SerializeField] private MonoBehaviour[] disableOnComplete;
     [SerializeField] private Rigidbody2D playerBody;
+    [SerializeField] private string nextSceneName = "MainMenu";
+    [SerializeField] private float loadDelay = 1.2f;
+    [SerializeField] private string completionTitle = "Level complete";
+    [SerializeField] private string completionMessage = "Loading next scene...";
 
     private bool isCompleted;
 
@@ -47,6 +52,7 @@ public sealed class FinishZone : MonoBehaviour
         }
 
         playerBody.linearVelocity = Vector2.zero;
+        Invoke(nameof(LoadNextScene), loadDelay);
     }
 
     private void OnGUI()
@@ -61,9 +67,18 @@ public sealed class FinishZone : MonoBehaviour
 
         Rect rect = new((Screen.width - width) * 0.5f, 32f, width, height);
         GUILayout.BeginArea(rect, GUI.skin.box);
-        GUILayout.Label("Tutorial complete");
-        GUILayout.Label("You used rope, load sharing, and spring tools.");
-        GUILayout.Label("Press R to restart");
+        GUILayout.Label(completionTitle);
+        GUILayout.Label(completionMessage);
         GUILayout.EndArea();
+    }
+
+    private void LoadNextScene()
+    {
+        if (string.IsNullOrWhiteSpace(nextSceneName))
+        {
+            return;
+        }
+
+        SceneManager.LoadScene(nextSceneName);
     }
 }
